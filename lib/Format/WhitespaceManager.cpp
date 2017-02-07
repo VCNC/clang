@@ -223,6 +223,10 @@ static void AlignTokens(const FormatStyle &Style, F &&Matches,
   // Whether a matching token has been found on the current line.
   bool FoundMatchOnLine = false;
 
+  // 현재 Enum에 대한 처리를 하고 있는지 여부를 저장한다.
+  bool InEnumBlock = false;
+  unsigned NestingLevelOfEnumBlock = 0;
+
   // Aligns a sequence of matching tokens, on the MinColumn column.
   //
   // Sequences start from the first matching token to align, and end at the
@@ -267,7 +271,33 @@ static void AlignTokens(const FormatStyle &Style, F &&Matches,
       ++NestingLevel;
     }
 
-    if (!Matches(Changes[i]))
+    // Enum 블록 안에 있는지 검사한다. ENUM블록 시작의 여러 형태에 대해 시작 처리를 한다.
+    // 그후 Brace가 닫힐때 인덴트 값을 확인해서 ENUM블록 종료 처리를 한다.
+    if (Changes[i].Kind == tok::l_brace) {
+      if ((i > 1 && Changes[i - 1].Kind == tok::kw_enum) ||
+          (i > 2 && Changes[i - 1].Kind == tok::identifier && Changes[i - 2].Kind == tok::kw_enum)) {
+        InEnumBlock = true;
+        NestingLevelOfEnumBlock = NestingLevel;
+      }
+    }
+    if (InEnumBlock && 
+        Changes[i].Kind == tok::r_brace && 
+        NestingLevelOfEnumBlock == (NestingLevel + 1)) {
+      InEnumBlock = false;
+      NestingLevelOfEnumBlock = 0;
+    }
+
+    bool IsConstantDeclaration = false;
+    if (i > 3 && Changes[i - 3].Kind == tok::kw_const && Changes[i - 1].Kind == tok::identifier) {
+      IsConstantDeclaration = true;
+    }
+
+    // AlignConsecutiveAssignments 설정이 False로 되어 있더라도,
+    // Enum 혹은 Constant인 경우에는 무조건 정렬하기로 한다.
+    // FIXME: 이에 대한 추가 설정은 나중에 추가할 가능할 듯 하다.
+    bool IsAlignmentActivated = Style.AlignConsecutiveAssignments || InEnumBlock || IsConstantDeclaration;
+
+    if (!IsAlignmentActivated || !Matches(Changes[i]))
       continue;
 
     // If there is more than one matching token per line, or if the number of
@@ -306,8 +336,11 @@ static void AlignTokens(const FormatStyle &Style, F &&Matches,
 }
 
 void WhitespaceManager::alignConsecutiveAssignments() {
-  if (!Style.AlignConsecutiveAssignments)
-    return;
+  // AlignConsecutiveAssignments 설정이 False로 되어 있더라도,
+  // Enum 혹은 Constant인 경우에는 무조건 정렬하기로 한다.
+  // 이를 위해 AlignConsecutiveAssignments 값만 보고 무조건 넘어가면 안된다.
+  // if (!Style.AlignConsecutiveAssignments)
+  //   return;
 
   AlignTokens(Style,
               [&](const Change &C) {
