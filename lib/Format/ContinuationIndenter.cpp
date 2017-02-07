@@ -986,16 +986,35 @@ void ContinuationIndenter::moveStatePastScopeOpener(LineState &State,
             getColumnLimit(State))
           BreakBeforeParameter = true;
       } else {
+        // 이 부분은 메소드에 넘어가는 파라메터 값에 새로운 라인이 있는 경우,
+        // 무조건 OneParameterPerLine으로 만드는 코드이다.
+        //
+        // e.g) 즉, 다음과 같은 형태를 강제한다.
+        // [obj method:value1 param:value2
+        //                    block:^(BOOL success) {
+        //                        completionHandler();
+        //                    }];
+
+        // 그러나 우리는 명시적으로 파라메터를 여러 줄어 걸쳐서 세팅하는 경우에만
+        // OneParameterPerLine으로 포맷팅하기로 한다. 그래서 이 부분을 주석처리한다.
+        // 즉, Block이나 Dictionary Literal 때문에 여러 라인이 되는 경우는 무시한다.
+        // 이 정책은 XCode의 기본 IDE 동작 방식에 어느 정도 맞추기 위함이다.
+        //
+        // e.g) 다음과 같은 형태를 허용한다.
+        // [obj method:value1 param:value2 block:^(BOOL success) {
+        //     completionHandler();
+        // }];
+
         // For ColumnLimit = 0, we have to figure out whether there is or has to
         // be a line break within this call.
-        for (const FormatToken *Tok = &Current;
-             Tok && Tok != Current.MatchingParen; Tok = Tok->Next) {
-          if (Tok->MustBreakBefore ||
-              (Tok->CanBreakBefore && Tok->NewlinesBefore > 0)) {
-            BreakBeforeParameter = true;
-            break;
-          }
-        }
+        // for (const FormatToken *Tok = &Current;
+        //      Tok && Tok != Current.MatchingParen; Tok = Tok->Next) {
+        //   if (Tok->MustBreakBefore ||
+        //       (Tok->CanBreakBefore && Tok->NewlinesBefore > 0)) {
+        //     BreakBeforeParameter = true;
+        //     break;
+        //   }
+        // }
       }
     }
   }
