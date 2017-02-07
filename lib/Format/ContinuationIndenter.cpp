@@ -934,8 +934,23 @@ void ContinuationIndenter::moveStatePastScopeOpener(LineState &State,
   unsigned LastSpace = State.Stack.back().LastSpace;
   bool AvoidBinPacking;
   bool BreakBeforeParameter = false;
-  unsigned NestedBlockIndent = std::max(State.Stack.back().StartOfFunctionCall,
-                                        State.Stack.back().NestedBlockIndent);
+  // 아래는 블록에 대해서, 블록에 대한 인덴트를 그 블록을 파라메터로 가지는 메서드의 시작으로 가지게 하는 코드이다.
+  //
+  // e.g) 즉 아래와 같이 인덴트 되도록 강제한다.
+  // NSArray *arr = [views method:[obj block:^BOOL(Type1 *param1, Type2 *param2) {
+  //                           return param1.boolValue;
+  //                       }]];
+
+  // 그러나 이 경우는 딱히 편하지도 않고, XCode와 동작이 다르기 떄문에 불편한다.
+  // 따라서 메소드 시작점이 아닌 블록 인덴트를 가지도록 한다.
+  //
+  // e.g) 즉 다음과 같이 포맷팅 되도록 한다.
+  // NSArray *arr = [views method:[obj block:^BOOL(Type1 *param1, Type2 *param2) {
+  //     return param1.boolValue;
+  // }]];
+  // unsigned NestedBlockIndent = std::max(State.Stack.back().StartOfFunctionCall,
+  //                                       State.Stack.back().NestedBlockIndent);
+  unsigned NestedBlockIndent = State.Stack.back().NestedBlockIndent;
   if (Current.isOneOf(tok::l_brace, TT_ArrayInitializerLSquare)) {
     if (Current.opensBlockOrBlockTypeList(Style)) {
       NewIndent = State.Stack.back().NestedBlockIndent + Style.IndentWidth;
