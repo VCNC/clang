@@ -14,6 +14,7 @@
 
 #include "WhitespaceManager.h"
 #include "llvm/ADT/STLExtras.h"
+#include <algorithm>
 
 namespace clang {
 namespace format {
@@ -161,9 +162,9 @@ void WhitespaceManager::calculateLineBreakInformation() {
 }
 
 // Align a single sequence of tokens, see AlignTokens below.
-template <typename F>
 static void
-AlignTokenSequence(unsigned Start, unsigned End, unsigned Column, F &&Matches,
+AlignTokenSequence(unsigned Start, unsigned End, unsigned Column,
+                   SmallVector<uint32_t, 16> &MatchedIdxs,
                    SmallVector<WhitespaceManager::Change, 16> &Changes) {
   bool FoundMatchOnLine = false;
   int Shift = 0;
@@ -172,12 +173,14 @@ AlignTokenSequence(unsigned Start, unsigned End, unsigned Column, F &&Matches,
       FoundMatchOnLine = false;
       Shift = 0;
     }
-    llvm::outs() << tok::getTokenName(Changes[i].Kind) << "\n";
+    
+    // 현재 인덱스가 실제로 Match된 인덱스인지 확인한다.
+    bool Matched = std::find(MatchedIdxs.begin(), MatchedIdxs.end(), i) != MatchedIdxs.end();
 
     // If this is the first matching token to be aligned, remember by how many
     // spaces it has to be shifted, so the rest of the changes on the line are
     // shifted by the same amount
-    if (!FoundMatchOnLine && Matches(Changes[i])) {
+    if (!FoundMatchOnLine && Matched) {
       FoundMatchOnLine = true;
       Shift = Column - Changes[i].StartOfTokenColumn;
       Changes[i].Spaces += Shift;
@@ -228,6 +231,11 @@ static void AlignTokens(const FormatStyle &Style, F &&Matches,
   bool InEnumBlock = false;
   unsigned NestingLevelOfEnumBlock = 0;
 
+  // AlignTokenSequence 함수내에서 매칭된 Change인지 확인해기 위해서 매칭 정보를 넘겨줘야한다.
+  // 원래 clang-format에서는 Matches 함수만 있으면 판단이 가능했지만,
+  // 이제 ENUM, 상수오 같은 부가적인 정보가 생겼으므로 이런식으로 데이터를 넘겨줘야한다.
+  SmallVector<uint32_t, 16> MatchedIdxs;
+
   // Aligns a sequence of matching tokens, on the MinColumn column.
   //
   // Sequences start from the first matching token to align, and end at the
@@ -237,12 +245,13 @@ static void AlignTokens(const FormatStyle &Style, F &&Matches,
   // containing any matching token to be aligned and located after such token.
   auto AlignCurrentSequence = [&] {
     if (StartOfSequence > 0 && StartOfSequence < EndOfSequence)
-      AlignTokenSequence(StartOfSequence, EndOfSequence, MinColumn, Matches,
-                         Changes);
+      AlignTokenSequence(StartOfSequence, EndOfSequence, MinColumn, 
+                         MatchedIdxs, Changes);
     MinColumn = 0;
     MaxColumn = UINT_MAX;
     StartOfSequence = 0;
     EndOfSequence = 0;
+    MatchedIdxs.clear();
   };
 
   for (unsigned i = 0, e = Changes.size(); i != e; ++i) {
@@ -326,6 +335,9 @@ static void AlignTokens(const FormatStyle &Style, F &&Matches,
 
     if (!AlignConditionMatched)
       continue;
+
+    // AlignTokenSequence 함수내에서 매칭된 Change인지 확인해기 위해서 매칭 정보를 넘겨줘야한다.
+    MatchedIdxs.push_back(i);
 
     // If there is more than one matching token per line, or if the number of
     // preceding commas, or the scope depth, do not match anymore, end the
