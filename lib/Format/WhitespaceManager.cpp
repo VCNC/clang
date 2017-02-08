@@ -271,8 +271,14 @@ static void AlignTokens(const FormatStyle &Style, F &&Matches,
       ++NestingLevel;
     }
 
-    // Enum 블록 안에 있는지 검사한다. ENUM블록 시작의 여러 형태에 대해 시작 처리를 한다.
-    // 그후 Brace가 닫힐때 인덴트 값을 확인해서 ENUM블록 종료 처리를 한다.
+    // Brace가 열릴때 Enum 블록이 시작하는 것인지 검사한다.
+    // ENUM블록이 시작하는 여러 형태에 대해 시작 처리를 한다.
+    //
+    // e.g) 예로 들면 다음과 같은 형태가 있을 수 있다.
+    // enum EnumName {
+    //   VALUE1,
+    //   VALUE2
+    // }
     if (Changes[i].Kind == tok::l_brace) {
       if ((i > 1 && Changes[i - 1].Kind == tok::kw_enum) ||
           (i > 2 && Changes[i - 1].Kind == tok::identifier && Changes[i - 2].Kind == tok::kw_enum)) {
@@ -280,6 +286,8 @@ static void AlignTokens(const FormatStyle &Style, F &&Matches,
         NestingLevelOfEnumBlock = NestingLevel;
       }
     }
+    // Brace가 닫힐때 ENUM블록 종료 처리를 한다.
+    // ENUM블록이 열릴때 Brace와 대응되는 Brace인지 확인하기 위해 인덴트 값을 확인한다.
     if (InEnumBlock && 
         Changes[i].Kind == tok::r_brace && 
         NestingLevelOfEnumBlock == (NestingLevel + 1)) {
@@ -287,6 +295,7 @@ static void AlignTokens(const FormatStyle &Style, F &&Matches,
       NestingLevelOfEnumBlock = 0;
     }
 
+    // 현재 대입 연산자에 대한 라인이 상수 선언인지 여부를 알아낸다.
     bool IsConstantDeclaration = false;
     if (i > 3 && Changes[i - 3].Kind == tok::kw_const && Changes[i - 1].Kind == tok::identifier) {
       IsConstantDeclaration = true;
