@@ -244,14 +244,15 @@ static void AlignTokens(const FormatStyle &Style, F &&Matches,
   // We need to adjust the StartOfTokenColumn of each Change that is on a line
   // containing any matching token to be aligned and located after such token.
   auto AlignCurrentSequence = [&] {
-    if (StartOfSequence > 0 && StartOfSequence < EndOfSequence)
+    if (StartOfSequence > 0 && StartOfSequence < EndOfSequence) {
       AlignTokenSequence(StartOfSequence, EndOfSequence, MinColumn, 
                          MatchedIdxs, Changes);
+      MatchedIdxs.clear();
+    }
     MinColumn = 0;
     MaxColumn = UINT_MAX;
     StartOfSequence = 0;
     EndOfSequence = 0;
-    MatchedIdxs.clear();
   };
 
   for (unsigned i = 0, e = Changes.size(); i != e; ++i) {
