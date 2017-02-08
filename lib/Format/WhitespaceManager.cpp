@@ -296,15 +296,18 @@ static void AlignTokens(const FormatStyle &Style, F &&Matches,
     }
 
     // 현재 대입 연산자에 대한 라인이 상수 선언인지 여부를 알아낸다.
-    bool IsConstantDeclaration = false;
-    if (i > 3 && Changes[i - 3].Kind == tok::kw_const && Changes[i - 1].Kind == tok::identifier) {
-      IsConstantDeclaration = true;
+    bool IsConstantAssignment = false;
+    if (Changes[i].Kind == tok::equal) {
+      if ((i > 3 && Changes[i - 3].Kind == tok::kw_const && Changes[i - 1].Kind == tok::identifier) ||
+          (i > 3 && Changes[i - 2].Kind == tok::kw_const && Changes[i - 1].Kind == tok::identifier)) {
+        IsConstantAssignment = true;
+      }
     }
 
     // AlignConsecutiveAssignments 설정이 False로 되어 있더라도,
     // Enum 혹은 Constant인 경우에는 무조건 정렬하기로 한다.
     // FIXME: 이에 대한 추가 설정은 나중에 추가할 가능할 듯 하다.
-    bool IsAlignmentActivated = Style.AlignConsecutiveAssignments || InEnumBlock || IsConstantDeclaration;
+    bool IsAlignmentActivated = Style.AlignConsecutiveAssignments || InEnumBlock || IsConstantAssignment;
 
     if (!IsAlignmentActivated || !Matches(Changes[i]))
       continue;
