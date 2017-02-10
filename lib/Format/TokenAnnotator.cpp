@@ -376,8 +376,13 @@ private:
         if (Contexts.back().FirstObjCSelectorName) {
           Contexts.back().FirstObjCSelectorName->LongestObjCSelectorName =
               Contexts.back().LongestObjCSelectorName;
-          if (Left->BlockParameterCount > 1)
+          if (Left->BlockParameterCount > 0) {
+            // 블록 파라메터가 하나라도 있는 경우 AlignColons를 하지 않기 위해
+            // LongestObjCSelectorName를 0으로 만들어준다.
+            // ContinuationIndenter에서 LongestObjCSelectorName가 0인 경우
+            // AlignColons의 값을 false로 만들게 된다.
             Contexts.back().FirstObjCSelectorName->LongestObjCSelectorName = 0;
+          }
         }
         next();
         return true;
