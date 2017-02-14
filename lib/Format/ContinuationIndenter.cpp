@@ -408,6 +408,23 @@ void ContinuationIndenter::addTokenOnCurrentLine(LineState &State, bool DryRun,
                !Previous.is(TT_OverloadedOperator)) ||
               (Previous.is(tok::colon) && Previous.is(TT_ObjCMethodExpr)))) {
     State.Stack.back().LastSpace = State.Column;
+
+    if (Current.is(tok::l_paren) && Current.is(TT_Unknown)) {
+      // 특별히 아래와 같은 케이스의 경우, 다음 라인의 첫 인덴트를 기준으로 한다:
+      //
+      // [object method:(StructName) {
+      //     .x = value1,
+      //     .y = value2,
+      // }]
+      //
+      // 그렇지 않으면 아래와 같이 인덴트가 너무 많이 들어오게 된다:
+      //
+      // [object method:(StructName) {
+      //                    .x = value1,
+      //                    .y = value2,
+      //                 }]
+      State.Stack.back().LastSpace = State.FirstIndent;
+    }
   } else if ((Previous.isOneOf(TT_BinaryOperator, TT_ConditionalExpr,
                                TT_CtorInitializerColon)) &&
              ((Previous.getPrecedence() != prec::Assignment &&
