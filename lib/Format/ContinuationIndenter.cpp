@@ -182,7 +182,9 @@ bool ContinuationIndenter::mustBreak(const LineState &State) {
     return true;
   if (Current.is(TT_SelectorName) && State.Stack.back().ObjCSelectorNameFound &&
       State.Stack.back().BreakBeforeParameter)
-    return true;
+    // BreakBeforeParameter가 설정되어 있더라도,
+    // 메서드 선언시에는 무조건 한줄에 파라메터 하나 정책은 적용하지 않는다.
+    return false;
 
   unsigned NewLineColumn = getNewLineColumn(State);
   if (Current.isMemberAccess() && Style.ColumnLimit != 0 &&
