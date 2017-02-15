@@ -339,13 +339,18 @@ void ContinuationIndenter::addTokenOnCurrentLine(LineState &State, bool DryRun,
 
   if (Current.is(TT_SelectorName) &&
       !State.Stack.back().ObjCSelectorNameFound) {
+    // 메서드 선언부가 여러줄인 경우, 가장 간 Selector 이름에 정렬하지 않는다.
+    // 이런 경우가 흔치 않고, 딱히 가독성에 큰 영향이 있는 것이 아니다.
+    // 가독성에 큰 문제가 없다면 Xcode의 동작 방식과 최대한 맞추는 것이 정책이다.
+    bool AlignColonWithLongestObjCSelectorName = false;
     unsigned MinIndent =
         std::max(State.FirstIndent + Style.ContinuationIndentWidth,
                  State.Stack.back().Indent);
     unsigned FirstColonPos = State.Column + Spaces + Current.ColumnWidth;
     if (Current.LongestObjCSelectorName == 0)
       State.Stack.back().AlignColons = false;
-    else if (MinIndent + Current.LongestObjCSelectorName > FirstColonPos)
+    else if (AlignColonWithLongestObjCSelectorName &&
+             MinIndent + Current.LongestObjCSelectorName > FirstColonPos)
       State.Stack.back().ColonPos = MinIndent + Current.LongestObjCSelectorName;
     else
       State.Stack.back().ColonPos = FirstColonPos;
